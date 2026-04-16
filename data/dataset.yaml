@@ -1,0 +1,9 @@
+# Dataset configuration
+path: ../data
+
+train: raw/train/images
+val: raw/val/images
+
+nc: 1  # number of classes
+names:
+  - chromosome
