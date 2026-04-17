@@ -16,3 +16,17 @@ dev = [
     "ipykernel>=7.2.0",
     "ruff>=0.15.9",
 ]
+yolo = [
+    "torch",
+    "torchvision",
+    "ultralytics>=8.4.38",
+]
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu128" }
+torchvision = { index = "pytorch-cu128" }
