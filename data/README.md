@@ -9,15 +9,17 @@ Os dados vêm de um dataset público do Kaggle com imagens de metáfase e
 anotações de classes cromossômicas (pastas `24_chromosomes_object` e
 `single_chromosomes`, conforme descrito no artigo do projeto).
 
+Dataset: [chromosome-image-dataset-karyotype](https://www.kaggle.com/datasets/aliabedimadiseh/chromosome-image-dataset-karyotype)
+(slug `aliabedimadiseh/chromosome-image-dataset-karyotype`).
+
 Para baixar:
 
 ```bash
-KAGGLE_DATASET="usuario/nome-do-dataset" uv run python src/data/download_dataset.py
+KAGGLE_DATASET="aliabedimadiseh/chromosome-image-dataset-karyotype" uv run python src/data/download_dataset.py
 ```
 
-Substitua `usuario/nome-do-dataset` pelo slug real do dataset (visível na URL
-`kaggle.com/datasets/usuario/nome-do-dataset`). Requer credenciais da Kaggle
-API em `~/.kaggle/kaggle.json` (ou `KAGGLE_USERNAME`/`KAGGLE_KEY`).
+Requer credenciais da Kaggle API em `~/.kaggle/kaggle.json` (ou
+`KAGGLE_USERNAME`/`KAGGLE_KEY`).
 
 O download extrai o conteúdo para `data/raw/`.
 

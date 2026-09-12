@@ -4,31 +4,25 @@ Requer credenciais da Kaggle API configuradas (arquivo ~/.kaggle/kaggle.json
 ou variáveis de ambiente KAGGLE_USERNAME / KAGGLE_KEY). Veja:
 https://www.kaggle.com/docs/api#authentication
 
-O slug do dataset (formato "usuario/nome-do-dataset", visível na URL
-kaggle.com/datasets/usuario/nome-do-dataset) precisa ser informado via
-variável de ambiente KAGGLE_DATASET, já que datasets diferentes podem estar
-associados ao notebook de referência do projeto.
+O slug do dataset é informado via variável de ambiente KAGGLE_DATASET. Dataset
+usado no projeto: aliabedimadiseh/chromosome-image-dataset-karyotype
+(https://www.kaggle.com/datasets/aliabedimadiseh/chromosome-image-dataset-karyotype).
 
 Uso:
-    KAGGLE_DATASET="usuario/nome-do-dataset" uv run python src/data/download_dataset.py
+    KAGGLE_DATASET="aliabedimadiseh/chromosome-image-dataset-karyotype" \
+        uv run python src/data/download_dataset.py
 """
 
 import os
-import sys
 import zipfile
 from pathlib import Path
 
 RAW_DIR = Path(__file__).resolve().parents[2] / "data" / "raw"
+DEFAULT_DATASET = "aliabedimadiseh/chromosome-image-dataset-karyotype"
 
 
 def main() -> None:
-    dataset_slug = os.environ.get("KAGGLE_DATASET")
-    if not dataset_slug:
-        sys.exit(
-            "Erro: defina a variável de ambiente KAGGLE_DATASET com o slug do "
-            "dataset (ex.: KAGGLE_DATASET=usuario/nome-do-dataset).\n"
-            "O slug fica visível na URL do dataset em kaggle.com/datasets/<slug>."
-        )
+    dataset_slug = os.environ.get("KAGGLE_DATASET", DEFAULT_DATASET)
 
     from kaggle.api.kaggle_api_extended import KaggleApi
 
