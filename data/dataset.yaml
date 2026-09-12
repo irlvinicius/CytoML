@@ -1,5 +1,11 @@
 # Dataset configuration
-path: C:/Users/User/Nome_da_Pasta/CytoML/data # Necessário que seja o caminho absoluto para o dataset, ou seja, o caminho completo a partir do diretório raiz do sistema operacional. Exemplo: C:/Users/User/Projects/CytoML/data
+# O Ultralytics exige que "path" seja absoluto (caso contrário ele resolve o
+# caminho relativo à pasta global de datasets do usuário, não à deste repositório).
+# Por isso este valor é apenas um placeholder: os notebooks de treino/avaliação
+# sobrescrevem "path" em tempo de execução com o caminho absoluto real desta
+# pasta (data/), calculado via Path(...).resolve() — nenhum caminho de máquina
+# específica precisa ser versionado.
+path: .
 
 train: processed/24_chromosomes_object/images/train
 val: processed/24_chromosomes_object/images/val
