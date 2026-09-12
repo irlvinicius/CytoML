@@ -1,9 +1,9 @@
 # Dataset configuration
-path: ../data
+path: C:/Users/User/Nome_da_Pasta/CytoML/data # Necessário que seja o caminho absoluto para o dataset, ou seja, o caminho completo a partir do diretório raiz do sistema operacional. Exemplo: C:/Users/User/Projects/CytoML/data
 
-train: raw/train/images
-val: raw/val/images
+train: processed/24_chromosomes_object/images/train
+val: processed/24_chromosomes_object/images/val
 
-nc: 1  # number of classes
+nc: 1
 names:
-  - chromosome
+  0: chromosome
