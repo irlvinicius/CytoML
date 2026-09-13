@@ -1,0 +1,13 @@
+# Dataset configuration
+# O Ultralytics exige "path absoluto". Por isso, valores abaixos são apenas PLACEHOLDERS.
+# Os notebooks de treino/avalição sobrescrevem "path" com paths reais da pasta (data/).
+# Nenhum path de máquina específica é versionado.
+path: .
+
+train: processed/24_chromosomes_object/images/train
+val: processed/24_chromosomes_object/images/val
+test: processed/24_chromosomes_object/images/test
+
+nc: 1
+names:
+  0: chromosome
