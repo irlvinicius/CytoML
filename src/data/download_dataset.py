@@ -41,7 +41,21 @@ def main() -> None:
             zf.extractall(RAW_DIR)
         zip_path.unlink()
 
+    _flatten_single_wrapper_dir(RAW_DIR)
     print(f"Dataset disponível em: {RAW_DIR}")
+
+
+def _flatten_single_wrapper_dir(raw_dir: Path) -> None:
+    """Alguns exports do Kaggle vêm com o conteúdo do zip dentro de uma única
+    pasta extra (ex.: "Data/"), em vez de já na raiz de data/raw/. Se isso
+    acontecer, sobe o conteúdo dessa pasta um nível e remove o wrapper.
+    """
+    entries = [p for p in raw_dir.iterdir() if p.name != ".gitkeep"]
+    if len(entries) == 1 and entries[0].is_dir():
+        wrapper = entries[0]
+        for item in wrapper.iterdir():
+            item.rename(raw_dir / item.name)
+        wrapper.rmdir()
 
 
 if __name__ == "__main__":
