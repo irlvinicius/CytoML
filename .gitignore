@@ -210,3 +210,6 @@ __marimo__/
 *.pt
 *.pth
 *.weights
+
+# CytoML - Figuras de exploração (calibração de parâmetros, etc.), não resultado final
+outputs/figures/clahe_calibration/
