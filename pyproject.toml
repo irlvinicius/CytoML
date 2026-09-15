@@ -16,6 +16,7 @@ dependencies = [
 [dependency-groups]
 dev = [
     "ipykernel>=7.2.0",
+    "pytest>=8.3.0",
     "ruff>=0.15.9",
 ]
 yolo = [
@@ -32,3 +33,14 @@ explicit = true
 [tool.uv.sources]
 torch = { index = "pytorch-cu128" }
 torchvision = { index = "pytorch-cu128" }
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "B"]
+ignore = [
+    "E402",  # sys.path.insert antes de import é padrão intencional nos notebooks
+    "E501",  # linha longa -- comum em prints formatados de notebook
+]
