@@ -49,3 +49,13 @@ antes do passo 4 — o `pyproject.toml` aponta para o índice `pytorch-cu128` do
 PyTorch com CUDA; sem driver compatível, `torch.cuda.is_available()` (checado
 em `models/yolo/yolo26m/notebooks/01_setup.ipynb`) retorna falso e o treino
 cai para CPU.
+
+## Desenvolvimento
+
+Antes de abrir um PR, rode localmente os mesmos checks do CI:
+
+```bash
+uv sync --group dev
+uv run ruff check .
+uv run pytest tests/ -v
+```
