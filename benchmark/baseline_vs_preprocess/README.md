@@ -69,11 +69,7 @@ Os parâmetros ficam em [`../_shared/eval_config.yaml`](../_shared/eval_config.y
    ```bash
    export KARYO_DATA_ROOT=/caminho/para/24_chromosomes_object
    ```
-2. Instale as dependências:
-   ```bash
-   pip install ultralytics huggingface_hub pandas matplotlib tabulate pyyaml
-   ```
-3. Abra e execute [`baseline_vs_preprocess.ipynb`](baseline_vs_preprocess.ipynb) (o kernel precisa ter sido iniciado a partir desta pasta, pois o notebook usa caminhos relativos).
+2. Abra e execute [`baseline_vs_preprocess.ipynb`](baseline_vs_preprocess.ipynb) (o kernel precisa ter sido iniciado a partir desta pasta, pois o notebook usa caminhos relativos).
 
 Na primeira execução o notebook baixa os pesos do Hugging Face e roda a validação. O resultado é salvo em `results/metrics_table.csv` e reaproveitado nas execuções seguintes. Para reavaliar do zero, use `FORCE_REEVAL = True` ou apague o CSV.
 
