@@ -1,0 +1,7 @@
+path: data/processed/24_chromosomes_object   # raiz do dataset
+train: images/train
+val: images/val
+test: images/test                          # split de teste (nunca visto no treino)
+
+names:
+  0: chromosome                            # TODO: conferir classes
