@@ -1,0 +1,7 @@
+split: test
+imgsz: 640        # TODO: usar o mesmo imgsz do treino
+batch: 16
+
+conf: 0.001       # padrão do Ultralytics p/ mAP (varre toda a curva PR)
+iou: 0.7          # IoU do NMS
+seed: 0
