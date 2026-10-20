@@ -106,6 +106,21 @@ export válido.
 acima, com validação visual dos recortes e dos resultados — mesmo padrão dos notebooks do detector
 (`models/yolo/yolo26m/notebooks/`).
 
+Três notebooks adicionais, fora do fluxo de treino/avaliação, servem só pra inspecionar o modelo
+já treinado:
+
+- `04_demo.ipynb` — roda o classificador em recortes individuais do teste e mostra a predição ao
+  lado da imagem (acerto/erro), sem métrica agregada.
+- `05_karyotype_demo.ipynb` — monta uma metáfase inteira do teste no formato clássico de
+  cariótipo (seções por grupo de Denver), usando as bounding boxes reais do XML — isola o
+  classificador, sem passar pelo detector.
+- `06_full_pipeline_demo.ipynb` — pipeline completo de ponta a ponta (imagem → YOLO →
+  classificador → cariótipo montado), usando o detector de verdade em vez das boxes do XML. A
+  anotação original só é usada no final, pra conferir a acurácia do resultado.
+
+Os três carregam o checkpoint fixo em `../runs/resnet50-30epochs/best.pt` — ajuste o caminho se
+você treinar uma run com outro nome.
+
 ## Estrutura
 
 - `src/classification/crops.py` — recorte + letterbox (sem torch, roda no CI).
