@@ -61,3 +61,52 @@ def letterbox(image: np.ndarray, size: int = DEFAULT_SIZE, scale_up: bool = True
     left = (size - new_w) // 2
     canvas[top : top + new_h, left : left + new_w] = resized
     return canvas
+
+
+def stretch(image: np.ndarray, size: int = DEFAULT_SIZE) -> np.ndarray:
+    """Redimensiona para size x size sem preservar a proporção -- equivalente ao `target_size`
+    do Keras usado pelo paper de referência (Rosas-Alatriste et al., 2026)."""
+    height, width = image.shape[:2]
+    shrinking = size * size < width * height
+    interpolation = cv2.INTER_AREA if shrinking else cv2.INTER_CUBIC
+    return cv2.resize(image, (size, size), interpolation=interpolation)
+
+
+def random_affine(
+    image: np.ndarray,
+    rng,
+    rotation: float = 30.0,
+    zoom: float = 0.2,
+    shift: float = 0.1,
+    horizontal_flip: bool = True,
+) -> np.ndarray:
+    """Augmentation do paper de referência, equivalente ao `ImageDataGenerator` do Keras com
+    rotation_range=30, zoom_range=0.2, width/height_shift_range=0.1, horizontal_flip=True e
+    fill_mode="nearest".
+
+    Como no Keras, o zoom é sorteado de forma independente em x e y (pode distorcer a
+    proporção) e a transformação mapeia coordenadas de saída para a entrada. `rng` é qualquer
+    objeto com `uniform(a, b)` e `random()` -- o módulo `random` (reseedado pelo PyTorch em
+    cada worker do DataLoader) ou um `random.Random(seed)` nos testes.
+    """
+    height, width = image.shape[:2]
+    theta = np.deg2rad(rng.uniform(-rotation, rotation))
+    zx, zy = rng.uniform(1 - zoom, 1 + zoom), rng.uniform(1 - zoom, 1 + zoom)
+    tx, ty = rng.uniform(-shift, shift) * width, rng.uniform(-shift, shift) * height
+
+    cos, sin = np.cos(theta), np.sin(theta)
+    linear = np.array([[cos, -sin], [sin, cos]]) @ np.diag([zx, zy])
+    center = np.array([width / 2, height / 2])
+    offset = center + np.array([tx, ty]) - linear @ center
+    matrix = np.hstack([linear, offset[:, None]])
+
+    out = cv2.warpAffine(
+        image,
+        matrix,
+        (width, height),
+        flags=cv2.INTER_LINEAR | cv2.WARP_INVERSE_MAP,
+        borderMode=cv2.BORDER_REPLICATE,
+    )
+    if horizontal_flip and rng.random() < 0.5:
+        out = cv2.flip(out, 1)
+    return out

@@ -1,9 +1,18 @@
 import csv
+import random
 
 import cv2
 import numpy as np
 import pytest
-from crops import background_color, clamp_box, crop_box, fit_size, letterbox
+from crops import (
+    background_color,
+    clamp_box,
+    crop_box,
+    fit_size,
+    letterbox,
+    random_affine,
+    stretch,
+)
 from extract_crops import extract_image, list_split_images, run
 
 
@@ -83,6 +92,38 @@ def test_letterbox_does_not_upscale_when_disabled():
     assert fit_size(30, 20, 224, scale_up=False) == (30, 20)
     assert fit_size(300, 100, 224, scale_up=False) == (224, 75)
     assert letterbox(np.zeros((30, 20), dtype=np.uint8), scale_up=False).shape == (224, 224)
+
+
+@pytest.mark.parametrize("shape", [(40, 100, 3), (100, 40), (300, 300)])
+def test_stretch_outputs_square_ignoring_aspect_ratio(shape):
+    out = stretch(np.zeros(shape, dtype=np.uint8), size=224)
+    assert out.shape == (224, 224, *shape[2:])
+
+
+def test_random_affine_is_identity_without_transforms():
+    image = np.random.default_rng(0).integers(0, 255, (50, 30), dtype=np.uint8)
+    out = random_affine(image, random.Random(0), rotation=0, zoom=0, shift=0, horizontal_flip=False)
+    assert np.array_equal(out, image)
+
+
+def test_random_affine_keeps_shape_dtype_and_is_reproducible():
+    image = np.random.default_rng(0).integers(0, 255, (224, 224), dtype=np.uint8)
+    a = random_affine(image, random.Random(42))
+    b = random_affine(image, random.Random(42))
+    assert a.shape == image.shape and a.dtype == image.dtype
+    assert np.array_equal(a, b)
+    assert not np.array_equal(a, image)
+
+
+class _AlwaysFlip(random.Random):
+    def random(self):
+        return 0.0
+
+
+def test_random_affine_horizontal_flip():
+    image = np.arange(20, dtype=np.uint8).reshape(4, 5)
+    out = random_affine(image, _AlwaysFlip(), rotation=0, zoom=0, shift=0)
+    assert np.array_equal(out, image[:, ::-1])
 
 
 def test_extract_image_writes_crops_and_rows(dataset):

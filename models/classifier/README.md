@@ -7,8 +7,9 @@ tipo é cada um — informação necessária para contar por classe e detectar a
 
 ## Status
 
-Código completo e testado (extração de recortes, dataset, treino, avaliação, export ONNX). O treino
-em si ainda não rodou — depende de GPU, feito na máquina de treino remota, fora deste repositório.
+Código completo e testado (extração de recortes, dataset, treino, avaliação, export ONNX). Run
+`resnet50-30epochs` (configuração anterior) treinada e avaliada; a run na configuração do paper
+(`resnet50-paper`) é a próxima, na máquina de treino remota.
 
 ## Como funciona
 
@@ -19,7 +20,7 @@ detector (splits já existentes)
 extract_crops.py  ──► data/processed/classification/{split}/{classe}/*.png + manifest.csv
         │
         ▼
-dataset.py  (letterbox 224×224, augmentation no treino)
+dataset.py  (resize 224×224, augmentation no treino)
         │
         ▼
 train.py  ──► models/classifier/runs/<run>/best.pt + history.csv
@@ -38,18 +39,42 @@ Cada imagem (metáfase) já está em `train`, `val` ou `test` por causa do pipel
 divisão, por imagem — nunca por recorte. Se cromossomos da mesma metáfase caíssem em splits
 diferentes, o teste deixaria de ser independente e o resultado ficaria artificialmente bom.
 
-### Letterbox em vez de esticar
+### Configuração de treino (padrão: paper de referência)
 
-Cromossomos são numerados por tamanho dentro do mesmo grupo (C6 é maior que C12, por exemplo) — o
-comprimento do recorte é parte do sinal que separa as classes. Por isso o redimensionamento
-(`src/classification/crops.py::letterbox`) preserva a proporção original e preenche o restante do
-canvas 224×224 com a cor de fundo estimada da própria imagem, em vez de esticar para quadrado.
+A configuração padrão de `src/classification/train.py` (`DEFAULT_CONFIG`) reproduz a rota (b)
+YOLOv8 + ResNet-50 de Rosas-Alatriste et al. (*Scientific Reports*, 2026). Qualquer campo pode ser
+sobrescrito (`train(resize="letterbox")`, ou pelo dicionário `OVERRIDES` do `02_train.ipynb`).
 
-### Classe rara (Y) e peso de treino
+| | Padrão (paper) | Run anterior `resnet50-30epochs` |
+|---|---|---|
+| Resize | `stretch` — esticado (`target_size` do Keras) | `letterbox` |
+| Augmentation | `paper` — rotação ≤30°, zoom ≤20% (x/y independentes), shift ≤10%, flip horizontal | `free_rotation` — flips + rotação livre 0–360° + jitter de escala/translação |
+| Camadas congeladas | `paper` — ~50 primeiras do Keras = `conv1`, `bn1`, `layer1`, `layer2[0]` (BN em modo inferência) | `none` |
+| Otimizador | Adam 1e-3, `ReduceLROnPlateau(0.02, patience=3, min_lr=1e-6)` | AdamW 3e-4, weight decay 1e-4, `cosine` |
+| Loss | cross-entropy pura | peso de classe `∝ 1/√freq` + `label_smoothing=0.1` |
+| Checkpoint / parada | menor `val_loss`, early stopping (patience 15), até 100 épocas | maior `val_f1`, sem early stopping, 30 épocas |
+| Batch / seed | 32 / 0 | 64 / sem seed fixa |
 
-Y é a classe mais rara (~2.600 cromossomos no dataset completo, contra ~10.000 da mediana). O treino
-usa peso por classe `∝ 1/√frequência` (mitiga o desbalanceamento sem overfitar nas classes raras) e
-`label_smoothing=0.1`.
+Para reproduzir a run anterior: `train(epochs=30, batch_size=64, lr=3e-4, optimizer="adamw",
+weight_decay=1e-4, scheduler="cosine", freeze="none", class_weights=True, label_smoothing=0.1,
+monitor="val_f1", early_stopping_patience=None, resize="letterbox", augment="free_rotation")`.
+
+**Letterbox vs. esticado.** Cromossomos são numerados por tamanho dentro do mesmo grupo (C6 é maior
+que C12, por exemplo), então o comprimento do recorte é parte do sinal que separa as classes. O
+letterbox (`crops.py::letterbox`) preserva a proporção e preenche o canvas com a cor de fundo
+estimada da própria imagem; o esticado do paper distorce bastante recortes muito alongados
+(cromossomo deitado na metáfase). Por isso `{"resize": "letterbox"}` é a ablação natural da
+configuração do paper.
+
+**Classe rara (Y).** Y é a classe mais rara (~2.600 cromossomos no dataset completo, contra ~10.000
+da mediana). O paper treina num dataset balanceado e usa cross-entropy pura; aqui isso tende a
+penalizar o Y — vale acompanhar a acurácia do grupo Y no `03_eval.ipynb`.
+
+O que fica diferente do paper mesmo na configuração padrão: o treino usa recortes do próprio dataset
+de metáfases (o paper treina no Dataset B, de cromossomos Q-band isolados) e o split 70/15/15 por
+imagem do detector, em vez de 75/25 aleatório — evita que cromossomos da mesma metáfase caiam em
+treino e validação. A normalização é a do torchvision (média/desvio do ImageNet), o equivalente do
+`resnet50.preprocess_input` do Keras para pesos do torchvision.
 
 ## Como rodar
 
@@ -73,20 +98,23 @@ anterior antes de rodar de novo (o mapeamento imagem → split pode ter mudado).
 ### 2. Treinar
 
 ```bash
-uv run python src/classification/train.py --backbone resnet50 --epochs 30
+uv run python src/classification/train.py --run-name resnet50-paper
 ```
 
-Backbones disponíveis: `resnet50` (default) e `efficientnet_b0`, ambos com pesos ImageNet. Salva o
-melhor checkpoint por macro-F1 na validação em `models/classifier/runs/<backbone>-<epochs>epochs/`
-(`best.pt` + `history.csv`).
+Salva em `models/classifier/runs/<run-name>/`: `best.pt` (melhor checkpoint segundo o `monitor`),
+`history.csv` (loss, acurácia e macro-F1 de treino/val por época), `config.json` e `last.pt`
+(estado completo de treino, inclusive dos geradores aleatórios — fora do git). Se o treino for
+interrompido, a mesma linha com `--resume` continua da última época salva, com a mesma sequência de
+embaralhamento/augmentation da run sem interrupção; o resume recusa config diferente da salva em
+`config.json`. Para treinos longos na máquina remota, rodar dentro de um `tmux`.
 
 ### 3. Avaliar no split de teste
 
 ```bash
-uv run python src/classification/evaluate.py --checkpoint models/classifier/runs/resnet50-30epochs/best.pt
+uv run python src/classification/evaluate.py --checkpoint models/classifier/runs/resnet50-paper/best.pt
 ```
 
-Reporta top-1/top-2, macro-F1, matriz de confusão 24×24 e acurácia por grupo de Denver (A–G, X, Y —
+Usa o mesmo resize do treino (lido do checkpoint). Reporta top-1/top-2, macro-F1, matriz de confusão 24×24 e acurácia por grupo de Denver (A–G, X, Y —
 erro dentro do mesmo grupo é o caso mais comum e mais tolerável). Salva `test_probs.npy` e
 `test_labels.npy` no mesmo diretório do checkpoint — as probabilidades (não só o argmax) são o que a
 próxima fase (detecção de aneuploidias) usa para atribuir contagens por classe.
@@ -119,7 +147,7 @@ já treinado:
   anotação original só é usada no final, pra conferir a acurácia do resultado.
 
 Os três carregam o checkpoint fixo em `../runs/resnet50-30epochs/best.pt` — ajuste o caminho se
-você treinar uma run com outro nome.
+você treinar uma run com outro nome. Eles aplicam letterbox fixo no `predict_crop`: para runs com `resize="stretch"` (padrão atual), troque por `dataset.preprocess(img, resize="stretch")` — ou use `evaluate.load_checkpoint_with_meta`, que devolve o resize usado no treino.
 
 ## Estrutura
 

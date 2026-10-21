@@ -29,12 +29,24 @@ from voc_to_yolo import DENVER_CLASSES
 DENVER_GROUPS = sorted({name[0] for name in DENVER_CLASSES})
 
 
-def load_checkpoint(checkpoint_path: Path, device: torch.device) -> torch.nn.Module:
+def load_checkpoint_with_meta(
+    checkpoint_path: Path, device: torch.device
+) -> tuple[torch.nn.Module, dict]:
+    """Carrega o modelo e devolve também o pré-processamento usado no treino.
+
+    Checkpoints anteriores à configuração do paper (ex.: `resnet50-30epochs`) não guardam `resize` --
+    nesse caso vale o letterbox, que era o único modo na época.
+    """
     ckpt = torch.load(checkpoint_path, map_location=device)
     model = build_model(ckpt["backbone"], ckpt["num_classes"]).to(device)
     model.load_state_dict(ckpt["state_dict"])
     model.eval()
-    return model
+    meta = {"resize": ckpt.get("resize", "letterbox"), "image_size": ckpt.get("image_size", 224)}
+    return model, meta
+
+
+def load_checkpoint(checkpoint_path: Path, device: torch.device) -> torch.nn.Module:
+    return load_checkpoint_with_meta(checkpoint_path, device)[0]
 
 
 @torch.no_grad()
@@ -62,9 +74,11 @@ def group_accuracy(labels: np.ndarray, preds: np.ndarray) -> dict[str, float]:
 
 def evaluate(checkpoint_path: Path, batch_size: int = 64, num_workers: int = 8) -> dict:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = load_checkpoint(checkpoint_path, device)
+    model, meta = load_checkpoint_with_meta(checkpoint_path, device)
 
-    test_ds = ChromosomeCropDataset(MANIFEST, CROPS_ROOT, "test", train=False)
+    test_ds = ChromosomeCropDataset(
+        MANIFEST, CROPS_ROOT, "test", meta["image_size"], train=False, resize=meta["resize"]
+    )
     test_loader = DataLoader(
         test_ds, batch_size=batch_size, shuffle=False, num_workers=num_workers
     )
