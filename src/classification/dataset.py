@@ -16,6 +16,7 @@ Dois modos de redimensionamento e de augmentation:
 import csv
 import random
 import sys
+from collections.abc import Collection
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -55,10 +56,18 @@ def preprocess(image_gray: np.ndarray, image_size: int = 224, resize: str = "let
     return to_tensor(resize_crop(image_gray, image_size, resize))
 
 
-def load_manifest(manifest_path: Path, split: str) -> list[dict]:
+def load_manifest(
+    manifest_path: Path, split: str | None = None, images: Collection[str] | None = None
+) -> list[dict]:
+    """Linhas do manifest de um split e/ou de um conjunto de imagens (folds da validação cruzada)."""
     with open(manifest_path, newline="") as f:
         rows = list(csv.DictReader(f))
-    return [row for row in rows if row["split"] == split]
+    if split is not None:
+        rows = [row for row in rows if row["split"] == split]
+    if images is not None:
+        images = set(images)
+        rows = [row for row in rows if row["image"] in images]
+    return rows
 
 
 def _random_rotate_scale_translate(
@@ -88,17 +97,18 @@ class ChromosomeCropDataset(Dataset):
         self,
         manifest_path: Path,
         crops_root: Path,
-        split: str,
+        split: str | None = None,
         image_size: int = 224,
         train: bool = False,
         resize: str = "letterbox",
         augment: str = "free_rotation",
+        images: Collection[str] | None = None,
     ):
         if resize not in RESIZE_MODES:
             raise ValueError(f"resize desconhecido: {resize!r} (opções: {RESIZE_MODES})")
         if augment not in AUGMENT_MODES:
             raise ValueError(f"augment desconhecido: {augment!r} (opções: {AUGMENT_MODES})")
-        self.rows = load_manifest(manifest_path, split)
+        self.rows = load_manifest(manifest_path, split, images)
         self.crops_root = Path(crops_root)
         self.image_size = image_size
         self.train = train

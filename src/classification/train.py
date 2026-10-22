@@ -10,9 +10,14 @@ Qualquer campo pode ser sobrescrito (ex.: `train(resize="letterbox")`). `last.pt
 cada época -- inclusive o estado dos geradores aleatórios -- e `resume=True` continua uma run
 interrompida de onde parou, com a mesma sequência de embaralhamento/augmentation.
 
+Com `fold=i`, treina na validação cruzada: os outros folds de `folds.csv` viram o treino e o fold
+`i` a validação (early stopping/checkpoint), salvando em `runs/<run-name>/fold<i>/`. O teste nunca
+entra em nenhum fold. Para rodar todos os folds de uma vez, ver `cross_validate.py`.
+
 Uso:
     uv run python src/classification/train.py --run-name resnet50-paper
     uv run python src/classification/train.py --run-name resnet50-paper --resume
+    uv run python src/classification/train.py --run-name resnet50-paper-cv --fold 0
 """
 
 import argparse
@@ -29,6 +34,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 from dataset import ChromosomeCropDataset
+from pipeline import load_fold
 from sklearn.metrics import f1_score
 from torch.utils.data import DataLoader
 from torchvision import models
@@ -219,6 +225,7 @@ def resolve_config(overrides: dict) -> dict:
 def train(
     run_name: str | None = None,
     resume: bool = False,
+    fold: int | None = None,
     image_size: int = 224,
     num_workers: int = 8,
     **overrides,
@@ -226,19 +233,26 @@ def train(
     config = resolve_config(overrides)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     run_name = run_name or f"{config['backbone']}-{config['epochs']}epochs"
-    run_dir = RUNS_ROOT / run_name
+    run_dir = RUNS_ROOT / run_name if fold is None else RUNS_ROOT / run_name / f"fold{fold}"
     run_dir.mkdir(parents=True, exist_ok=True)
     best_path, last_path, history_path = run_dir / "best.pt", run_dir / "last.pt", run_dir / "history.csv"
 
     loader_generator = seed_everything(config["seed"])
 
+    if fold is None:
+        train_sel, val_sel = {"split": "train"}, {"split": "val"}
+    else:
+        train_images, val_images = load_fold(fold)
+        train_sel, val_sel = {"images": train_images}, {"images": val_images}
     train_ds = ChromosomeCropDataset(
-        MANIFEST, CROPS_ROOT, "train", image_size, train=True,
-        resize=config["resize"], augment=config["augment"],
+        MANIFEST, CROPS_ROOT, image_size=image_size, train=True,
+        resize=config["resize"], augment=config["augment"], **train_sel,
     )
     val_ds = ChromosomeCropDataset(
-        MANIFEST, CROPS_ROOT, "val", image_size, train=False, resize=config["resize"],
+        MANIFEST, CROPS_ROOT, image_size=image_size, train=False, resize=config["resize"], **val_sel,
     )
+    if any(row["split"] == "test" for row in train_ds.rows + val_ds.rows):
+        raise ValueError("recortes do split de teste no treino/validação -- folds.csv desatualizado?")
     loader_kwargs = {"batch_size": config["batch_size"], "num_workers": num_workers, "pin_memory": True}
     train_loader = DataLoader(train_ds, shuffle=True, generator=loader_generator, **loader_kwargs)
     val_loader = DataLoader(val_ds, shuffle=False, **loader_kwargs)
@@ -256,6 +270,8 @@ def train(
     bad_epochs, start_epoch = 0, 1
 
     saved_config = {"image_size": image_size, **config}
+    if fold is not None:
+        saved_config["fold"] = fold
     if resume and last_path.exists():
         previous = json.loads((run_dir / "config.json").read_text())
         if previous != saved_config:
@@ -351,6 +367,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--run-name", default=None)
     parser.add_argument("--resume", action="store_true", help="continua a partir de last.pt")
+    parser.add_argument("--fold", type=int, default=None, help="treina o fold i da validação cruzada")
     parser.add_argument("--backbone", choices=["resnet50", "efficientnet_b0"])
     parser.add_argument("--epochs", type=int)
     parser.add_argument("--batch-size", type=int)
@@ -370,6 +387,7 @@ if __name__ == "__main__":
     train(
         run_name=args.run_name,
         resume=args.resume,
+        fold=args.fold,
         image_size=args.image_size,
         num_workers=args.num_workers,
         **{k: v for k, v in cli_overrides.items() if v is not None},

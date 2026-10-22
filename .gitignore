@@ -215,3 +215,4 @@ __marimo__/
 outputs/figures/clahe_calibration/
 # Checkpoint de resume do classificador (inclui estado do otimizador, ~3x o best.pt)
 models/classifier/runs/*/last.pt
+models/classifier/runs/*/*/last.pt
