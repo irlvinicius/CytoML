@@ -146,8 +146,9 @@ já treinado:
   classificador → cariótipo montado), usando o detector de verdade em vez das boxes do XML. A
   anotação original só é usada no final, pra conferir a acurácia do resultado.
 
-Os três carregam o checkpoint fixo em `../runs/resnet50-30epochs/best.pt` — ajuste o caminho se
-você treinar uma run com outro nome. Eles aplicam letterbox fixo no `predict_crop`: para runs com `resize="stretch"` (padrão atual), troque por `dataset.preprocess(img, resize="stretch")` — ou use `evaluate.load_checkpoint_with_meta`, que devolve o resize usado no treino.
+`04_demo` ainda carrega `../runs/resnet50-30epochs/best.pt`; `05` e `06` usam `../runs/resnet50-paper/best.pt` e leem do checkpoint o resize usado no treino (`evaluate.load_checkpoint_with_meta` + `dataset.preprocess`), então funcionam com qualquer run.
+
+O `06` também inclui o pós-processamento dos recortes para a visualização (`src/classification/postprocess.py`: a versão fiel ao paper e a adaptada, usada no cariótipo) e o alerta numérico por contagem (`src/classification/karyotype.py`). O cariótipo final segue o layout do exame (`src/classification/karyogram.py`): 4 linhas, homólogos lado a lado, cromossomos em pé e na escala real da metáfase. As metáfases com aneuploidia real do split de teste (`data/raw/number_abnormalities.csv`) são listadas no passo 1.
 
 ## Estrutura
 
@@ -157,7 +158,12 @@ você treinar uma run com outro nome. Eles aplicam letterbox fixo no `predict_cr
 - `src/classification/train.py` — loop de treino.
 - `src/classification/evaluate.py` — métricas no split de teste.
 - `src/classification/export_onnx.py` — export + verificação de paridade.
+- `src/classification/postprocess.py` — limpeza dos recortes para o cariótipo (sem torch, roda no CI).
+- `src/classification/karyotype.py` — contagem por classe e alerta numérico (sem torch, roda no CI).
+- `src/classification/karyogram.py` — layout e desenho do cariograma no formato do exame.
 - `tests/test_crops.py` — testes de recorte/letterbox/extração, sem depender do dataset real.
+- `tests/test_postprocess.py` — testes do pós-processamento, da orientação em pé e do alerta numérico.
+- `tests/test_karyogram.py` — testes do layout do cariograma.
 
 ## Pendências
 
