@@ -128,6 +128,22 @@ uv run python src/classification/export_onnx.py --checkpoint models/classifier/r
 Exporta com batch dinâmico e confere a paridade numérica contra `onnxruntime` antes de considerar o
 export válido.
 
+### 5. Validação cruzada (k-fold)
+
+```bash
+PYTHONUNBUFFERED=1 uv run python src/classification/cross_validate.py --run-name resnet50-paper-cv \
+    | tee models/classifier/runs/resnet50-paper-cv.log
+```
+
+Treina um modelo por fold de `data/processed/24_chromosomes_object/folds/folds.csv` (gerado por
+`src/preprocessing/pipeline.py::generate_kfold_splits`, 5 folds estratificados por sexo × tipo de
+cariótipo e agrupados por caso, sobre o pool de treino+validação), com a configuração padrão. Cada
+modelo usa o próprio fold como validação (early stopping e checkpoint) e é avaliado no **mesmo split
+de teste fixo**; `cv_summary.csv` traz as métricas por fold e a média ± desvio padrão. Folds já
+avaliados são pulados e um fold interrompido continua de `last.pt`, então basta repetir o comando.
+Um fold isolado: `train.py --run-name resnet50-paper-cv --fold 0`. Custo: ~2h20 por fold na máquina
+de treino (RTX 4070 Ti), ~12h os 5. O detector tem o equivalente em `src/detection/cross_validate.py`.
+
 ### Notebooks
 
 `models/classifier/notebooks/01_setup.ipynb`, `02_train.ipynb`, `03_eval.ipynb` fazem o mesmo fluxo
@@ -146,6 +162,10 @@ já treinado:
   classificador → cariótipo montado), usando o detector de verdade em vez das boxes do XML. A
   anotação original só é usada no final, pra conferir a acurácia do resultado.
 
+`07_cross_validation.ipynb` agrega a validação cruzada (passo 5): métricas de teste por fold, média ± desvio
+padrão ao lado do split único (`resnet50-paper`), F1 por classe com barras de erro e curvas de validação
+por fold. Tabelas e figuras vão para `outputs/figures/classifier/`.
+
 `04_demo` ainda carrega `../runs/resnet50-30epochs/best.pt`; `05` e `06` usam `../runs/resnet50-paper/best.pt` e leem do checkpoint o resize usado no treino (`evaluate.load_checkpoint_with_meta` + `dataset.preprocess`), então funcionam com qualquer run.
 
 O `06` também inclui o pós-processamento dos recortes para a visualização (`src/classification/postprocess.py`: a versão fiel ao paper e a adaptada, usada no cariótipo) e o alerta numérico por contagem (`src/classification/karyotype.py`). O cariótipo final segue o layout do exame (`src/classification/karyogram.py`): 4 linhas, homólogos lado a lado, cromossomos em pé e na escala real da metáfase. As metáfases com aneuploidia real do split de teste (`data/raw/number_abnormalities.csv`) são listadas no passo 1.
@@ -158,17 +178,18 @@ O `06` também inclui o pós-processamento dos recortes para a visualização (`
 - `src/classification/train.py` — loop de treino.
 - `src/classification/evaluate.py` — métricas no split de teste.
 - `src/classification/export_onnx.py` — export + verificação de paridade.
+- `src/classification/cross_validate.py` — validação cruzada (um modelo por fold, avaliado no teste fixo).
+- `src/classification/metrics.py` — métricas a partir das probabilidades salvas: acurácia, P/R/F1, AUC-ROC, IC por bootstrap (sem torch).
 - `src/classification/postprocess.py` — limpeza dos recortes para o cariótipo (sem torch, roda no CI).
 - `src/classification/karyotype.py` — contagem por classe e alerta numérico (sem torch, roda no CI).
 - `src/classification/karyogram.py` — layout e desenho do cariograma no formato do exame.
 - `tests/test_crops.py` — testes de recorte/letterbox/extração, sem depender do dataset real.
 - `tests/test_postprocess.py` — testes do pós-processamento, da orientação em pé e do alerta numérico.
 - `tests/test_karyogram.py` — testes do layout do cariograma.
+- `tests/test_metrics.py` — testes das métricas e da agregação entre folds.
 
 ## Pendências
 
 - Rodar o treino de verdade na máquina remota e registrar as métricas de teste aqui (ou num arquivo
   de resultados à parte).
-- Cross-validation (k-fold): a extração já reaproveita os splits por imagem do detector, incluindo os
-  folds gerados em `data/processed/24_chromosomes_object/folds/`; adaptar `train.py`/`evaluate.py`
-  para rodar sobre eles fica para quando fizer sentido pagar o custo de treinar k vezes.
+- Rodar a validação cruzada na máquina de treino e registrar média ± desvio (`07_cross_validation.ipynb`).
