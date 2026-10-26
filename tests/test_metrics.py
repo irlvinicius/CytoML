@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from metrics import bootstrap_ci, classification_metrics, mean_std, summarize_folds
+from metrics import bootstrap_ci, classification_metrics, macro_prf, mean_std, summarize_folds
 
 
 def test_mean_std_uses_sample_std():
@@ -34,6 +34,32 @@ def test_bootstrap_ci_contains_point_estimate_and_is_deterministic():
     low, high = bootstrap_ci(probs, labels, accuracy, n_resamples=200)
     assert low <= accuracy(probs, labels) <= high
     assert (low, high) == bootstrap_ci(probs, labels, accuracy, n_resamples=200)
+
+
+def test_bootstrap_ci_by_group_is_wider_for_correlated_samples():
+    # 30 grupos de 20 amostras: cada grupo inteiro acerta ou erra junto
+    rng = np.random.default_rng(2)
+    groups = np.repeat(np.arange(30), 20)
+    correct = np.repeat(rng.random(30) < 0.8, 20)
+    labels = np.zeros(600, dtype=int)
+    probs = np.eye(2)[np.where(correct, 0, 1)]
+
+    def accuracy(p, y):
+        return float((p.argmax(axis=1) == y).mean())
+
+    low_i, high_i = bootstrap_ci(probs, labels, accuracy, n_resamples=300)
+    low_g, high_g = bootstrap_ci(probs, labels, accuracy, n_resamples=300, groups=groups)
+    assert high_g - low_g > 2 * (high_i - low_i)
+
+
+def test_macro_prf_matches_definition():
+    labels = np.array([0, 0, 1, 1, 2, 2])
+    preds = np.array([0, 1, 1, 1, 2, 0])
+    precision, recall, f1 = macro_prf(preds, labels, 3)
+    # por classe: P = [1/2, 2/3, 1], R = [1/2, 1, 1/2]
+    assert precision == pytest.approx((1 / 2 + 2 / 3 + 1) / 3)
+    assert recall == pytest.approx((1 / 2 + 1 + 1 / 2) / 3)
+    assert f1 == pytest.approx((1 / 2 + 0.8 + 2 / 3) / 3)
 
 
 def test_classification_metrics_perfect_predictions():
