@@ -211,8 +211,19 @@ __marimo__/
 # *.pth
 # *.weights
 
-# CytoML - Figuras de exploração (calibração de parâmetros, etc.), não resultado final
-outputs/figures/clahe_calibration/
-# Checkpoint de resume do classificador (inclui estado do otimizador, ~3x o best.pt)
+# CytoML - Figuras/Tabelas geradas pelos notebooks
+# Resultados estão acessíveis em -> https://huggingface.co/irlvinicius/KaryoVisio
+outputs/figures/*
+!outputs/figures/.gitkeep
+
+# Checkpoint do classificador
 models/classifier/runs/*/last.pt
 models/classifier/runs/*/*/last.pt
+
+# Resultados e runs do Cross-Validation (Disponíveis em -> https://huggingface.co/irlvinicius/KaryoVisio)
+models/classifier/runs/*-cv/
+models/yolo/yolo26m/runs/yolo26m-cv/
+models/yolo/yolo26m/runs/yolo26m-preprocessed/
+
+# Outputs (gráficos) do model.val do 03_eval.ipynb do detector
+models/yolo/yolo26m/runs/eval/
