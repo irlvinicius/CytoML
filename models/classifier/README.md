@@ -7,9 +7,21 @@ tipo é cada um — informação necessária para contar por classe e detectar a
 
 ## Status
 
-Código completo e testado (extração de recortes, dataset, treino, avaliação, export ONNX). Run
-`resnet50-30epochs` (configuração anterior) treinada e avaliada; a run na configuração do paper
-(`resnet50-paper`) é a próxima, na máquina de treino remota.
+Código completo e testado (extração de recortes, dataset, treino, avaliação, validação cruzada,
+export ONNX). O modelo usado no pipeline é o `resnet50-paper` (configuração do paper), o único peso
+do classificador versionado no git. Resultados no split de teste (34.434 recortes de 749 metáfases;
+IC 95% por bootstrap reamostrando metáfases inteiras, `03_eval.ipynb`):
+
+| | Split único (`resnet50-paper`) | Validação cruzada (5 folds, média ± desvio) |
+|---|---|---|
+| Acurácia | 0,9848 (0,9830–0,9865) | 0,9854 ± 0,0003 |
+| Macro-F1 | 0,9838 (0,9818–0,9856) | 0,9845 ± 0,0005 |
+| Macro AUC-ROC | 0,9997 (0,9995–0,9998) | 0,9997 |
+
+As classes mais difíceis são X (F1 0,967 no split único) e Y (F1 0,962 ± 0,009 na validação
+cruzada, a mais instável entre folds). A run anterior `resnet50-30epochs` (configuração antiga,
+abaixo) fica só como referência: o git guarda as probabilidades de teste, usadas na comparação
+(McNemar) do `03_eval.ipynb`, e o peso fica no Hugging Face.
 
 ## Como funciona
 
@@ -122,7 +134,7 @@ próxima fase (detecção de aneuploidias) usa para atribuir contagens por class
 ### 4. Exportar para ONNX
 
 ```bash
-uv run python src/classification/export_onnx.py --checkpoint models/classifier/runs/resnet50-30epochs/best.pt
+uv run python src/classification/export_onnx.py --checkpoint models/classifier/runs/resnet50-paper/best.pt
 ```
 
 Exporta com batch dinâmico e confere a paridade numérica contra `onnxruntime` antes de considerar o
@@ -144,9 +156,14 @@ avaliados são pulados e um fold interrompido continua de `last.pt`, então bast
 Um fold isolado: `train.py --run-name resnet50-paper-cv --fold 0`. Custo: ~2h20 por fold na máquina
 de treino (RTX 4070 Ti), ~12h os 5. O detector tem o equivalente em `src/detection/cross_validate.py`.
 
-### Notebooks
+### Pesos fora do git
 
-Os pesos de todas as runs (inclusive os 5 folds) estão no Hugging Face -- ver "Pesos dos modelos" no README principal.
+Só o `resnet50-paper/best.pt` está no git. Os 5 folds da validação cruzada e o peso da run antiga
+`resnet50-30epochs` estão no Hugging Face. Os comandos de download estão em "Pesos dos modelos", no
+README principal. Para o `07_cross_validation.ipynb`, basta baixar `models/resnet50-paper-cv/` e
+movê-lo para `models/classifier/runs/`.
+
+### Notebooks
 
 `models/classifier/notebooks/01_setup.ipynb`, `02_train.ipynb`, `03_eval.ipynb` fazem o mesmo fluxo
 acima, com validação visual dos recortes e dos resultados — mesmo padrão dos notebooks do detector
@@ -168,7 +185,7 @@ já treinado:
 padrão ao lado do split único (`resnet50-paper`), F1 por classe com barras de erro e curvas de validação
 por fold. Tabelas e figuras também são salvas em `outputs/figures/classifier/` (só localmente, não versionadas).
 
-`04_demo` ainda carrega `../runs/resnet50-30epochs/best.pt`; `05` e `06` usam `../runs/resnet50-paper/best.pt` e leem do checkpoint o resize usado no treino (`evaluate.load_checkpoint_with_meta` + `dataset.preprocess`), então funcionam com qualquer run.
+`04`, `05` e `06` usam `../runs/resnet50-paper/best.pt` e leem do checkpoint o resize usado no treino (`evaluate.load_checkpoint_with_meta` + `dataset.preprocess`), então funcionam com qualquer run.
 
 O `06` também inclui o pós-processamento dos recortes para a visualização (`src/classification/postprocess.py`: a versão fiel ao paper e a adaptada, usada no cariótipo) e o alerta numérico por contagem (`src/classification/karyotype.py`). O cariótipo final segue o layout do exame (`src/classification/karyogram.py`): 4 linhas, homólogos lado a lado, cromossomos em pé e na escala real da metáfase. As metáfases com aneuploidia real do split de teste (`data/raw/number_abnormalities.csv`) são listadas no passo 1.
 
@@ -192,6 +209,6 @@ O `06` também inclui o pós-processamento dos recortes para a visualização (`
 
 ## Pendências
 
-- Rodar o treino de verdade na máquina remota e registrar as métricas de teste aqui (ou num arquivo
-  de resultados à parte).
-- Subir os pesos da validação cruzada para o Hugging Face (ver "Pesos dos modelos" no README principal).
+- Detecção de aneuploidias a partir das probabilidades (`test_probs.npy`), com a restrição de
+  "2 por classe" na atribuição das contagens. Hoje o alerta numérico de `karyotype.py` usa só o
+  argmax.

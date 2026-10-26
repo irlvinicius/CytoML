@@ -18,7 +18,7 @@ source ~/.bashrc   # ou reabrir o terminal, para "uv" entrar no PATH
 # 3. Clonar o repositório e ir para a branch de trabalho
 git clone https://github.com/irlvinicius/CytoML.git
 cd CytoML
-git checkout feature/pre_processing   # ou develop, após o merge
+git checkout main
 
 # 4. Sincronizar o ambiente Python (--all-groups para torch ultralytics do grupo "yolo")
 uv sync --all-groups
@@ -65,6 +65,7 @@ modelos da validação cruzada e os artefatos de treino, ficam no Hugging Face:
 | YOLO26m, validação cruzada (5 folds) | HF `models/yolo26m-cv/fold{0..4}/` | mAP@50-95 0,826 ± 0,003¹ / 0,878 ± 0,004 |
 | ResNet50 classificador (configuração do paper) | git `models/classifier/runs/resnet50-paper/` | acurácia 0,9848 (IC 95% 0,9830–0,9865) |
 | ResNet50, validação cruzada (5 folds) | HF `models/resnet50-paper-cv/fold{0..4}/` | acurácia 0,9854 ± 0,0003 |
+| ResNet50, run anterior (`resnet50-30epochs`, só referência) | HF `models/resnet50-30epochs/` | ver `models/classifier/notebooks/03_eval.ipynb` |
 
 ¹ Nas 185 imagens de teste fora do treino do baseline, cada modelo no formato de
 imagem em que foi treinado (ver `src/detection/evaluate_detector.py`); o outro valor é
@@ -75,6 +76,14 @@ Para baixar (ex.: os 5 folds do classificador):
 
 ```bash
 uvx --from huggingface_hub hf download irlvinicius/KaryoVisio --include "models/resnet50-paper-cv/*" --local-dir hf_models
+```
+
+Os arquivos são baixados em `hf_models/models/<modelo>/`. Para os notebooks os encontrarem, mova-os
+para a pasta de runs correspondente. Por exemplo, para o peso da run antiga do classificador:
+
+```bash
+uvx --from huggingface_hub hf download irlvinicius/KaryoVisio --include "models/resnet50-30epochs/best.pt" --local-dir hf_models
+mv hf_models/models/resnet50-30epochs/best.pt models/classifier/runs/resnet50-30epochs/
 ```
 
 ## Desenvolvimento

@@ -7,7 +7,7 @@ teste em test_probs.npy, usadas na Fase 5 para atribuir contagens com a restriç
 de "2 por classe" em vez de só o argmax.
 
 Uso:
-    uv run python src/classification/evaluate.py --checkpoint models/classifier/runs/resnet50-30epochs/best.pt
+    uv run python src/classification/evaluate.py --checkpoint models/classifier/runs/resnet50-paper/best.pt
 """
 
 import argparse

@@ -5,7 +5,7 @@ considerar o export válido (mesmo princípio do src/export/test_model_output.py
 detector, mas embutido aqui em vez de manual).
 
 Uso:
-    uv run python src/classification/export_onnx.py --checkpoint models/classifier/runs/resnet50-30epochs/best.pt
+    uv run python src/classification/export_onnx.py --checkpoint models/classifier/runs/resnet50-paper/best.pt
 """
 
 import argparse
