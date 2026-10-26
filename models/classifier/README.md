@@ -20,8 +20,8 @@ IC 95% por bootstrap reamostrando metáfases inteiras, `03_eval.ipynb`):
 
 As classes mais difíceis são X (F1 0,967 no split único) e Y (F1 0,962 ± 0,009 na validação
 cruzada, a mais instável entre folds). A run anterior `resnet50-30epochs` (configuração antiga,
-abaixo) fica só como referência: o git guarda as probabilidades de teste, usadas na comparação
-(McNemar) do `03_eval.ipynb`, e o peso fica no Hugging Face.
+abaixo) fica só como referência: o git guarda o histórico e as probabilidades de teste, usadas na
+comparação (McNemar) do `03_eval.ipynb`; o peso não é mais distribuído.
 
 ## Como funciona
 
@@ -158,10 +158,10 @@ de treino (RTX 4070 Ti), ~12h os 5. O detector tem o equivalente em `src/detecti
 
 ### Pesos fora do git
 
-Só o `resnet50-paper/best.pt` está no git. Os 5 folds da validação cruzada e o peso da run antiga
-`resnet50-30epochs` estão no Hugging Face. Os comandos de download estão em "Pesos dos modelos", no
-README principal. Para o `07_cross_validation.ipynb`, basta baixar `models/resnet50-paper-cv/` e
-movê-lo para `models/classifier/runs/`.
+Só o `resnet50-paper/best.pt` está no git. Os 5 folds da validação cruzada estão no Hugging Face
+(`models/resnet50-paper-cv/`). Os comandos de download estão em "Pesos dos modelos", no README
+principal; para o `07_cross_validation.ipynb` não é preciso baixar os pesos (ver o início do
+notebook).
 
 ### Notebooks
 
