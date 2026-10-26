@@ -146,6 +146,8 @@ de treino (RTX 4070 Ti), ~12h os 5. O detector tem o equivalente em `src/detecti
 
 ### Notebooks
 
+Os pesos de todas as runs (inclusive os 5 folds) estão no Hugging Face -- ver "Pesos dos modelos" no README principal.
+
 `models/classifier/notebooks/01_setup.ipynb`, `02_train.ipynb`, `03_eval.ipynb` fazem o mesmo fluxo
 acima, com validação visual dos recortes e dos resultados — mesmo padrão dos notebooks do detector
 (`models/yolo/yolo26m/notebooks/`).
@@ -164,7 +166,7 @@ já treinado:
 
 `07_cross_validation.ipynb` agrega a validação cruzada (passo 5): métricas de teste por fold, média ± desvio
 padrão ao lado do split único (`resnet50-paper`), F1 por classe com barras de erro e curvas de validação
-por fold. Tabelas e figuras vão para `outputs/figures/classifier/`.
+por fold. Tabelas e figuras também são salvas em `outputs/figures/classifier/` (só localmente, não versionadas).
 
 `04_demo` ainda carrega `../runs/resnet50-30epochs/best.pt`; `05` e `06` usam `../runs/resnet50-paper/best.pt` e leem do checkpoint o resize usado no treino (`evaluate.load_checkpoint_with_meta` + `dataset.preprocess`), então funcionam com qualquer run.
 
@@ -192,4 +194,4 @@ O `06` também inclui o pós-processamento dos recortes para a visualização (`
 
 - Rodar o treino de verdade na máquina remota e registrar as métricas de teste aqui (ou num arquivo
   de resultados à parte).
-- Rodar a validação cruzada na máquina de treino e registrar média ± desvio (`07_cross_validation.ipynb`).
+- Subir os pesos da validação cruzada para o Hugging Face (ver "Pesos dos modelos" no README principal).
