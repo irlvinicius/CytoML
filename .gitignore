@@ -219,6 +219,8 @@ outputs/figures/*
 # Checkpoint do classificador
 models/classifier/runs/*/last.pt
 models/classifier/runs/*/*/last.pt
+# Pesos de runs antigas: só no Hugging Face (as probabilidades de teste continuam versionadas)
+models/classifier/runs/resnet50-30epochs/best.pt
 
 # Resultados e runs do Cross-Validation (Disponíveis em -> https://huggingface.co/irlvinicius/KaryoVisio)
 models/classifier/runs/*-cv/
