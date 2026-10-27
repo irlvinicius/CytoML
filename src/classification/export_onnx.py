@@ -35,6 +35,7 @@ def export(checkpoint_path: Path, image_size: int = 224, atol: float = 1e-3) -> 
         output_names=["logits"],
         dynamic_axes={"input": {0: "batch"}, "logits": {0: "batch"}},
         opset_version=17,
+        dynamo=False,
     )
 
     with torch.no_grad():
