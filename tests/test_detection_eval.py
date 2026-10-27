@@ -6,7 +6,8 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src" / "detection"))
 
-from evaluate_detector import build_eval_set  # noqa: E402
+import numpy as np  # noqa: E402
+from evaluate_detector import box_iou, build_eval_set, difficult_images, match_detections  # noqa: E402
 
 
 @pytest.fixture
@@ -43,3 +44,31 @@ def test_build_eval_set_rejects_unknown_source(fake_dataset):
     raw, processed, eval_root = fake_dataset
     with pytest.raises(ValueError):
         build_eval_set("subset", ["a"], "clahe", eval_root, raw, processed)
+
+
+def test_box_iou():
+    boxes = np.array([[0, 0, 10, 10]], dtype=float)
+    others = np.array([[0, 0, 10, 10], [5, 0, 15, 10], [20, 20, 30, 30]], dtype=float)
+    assert box_iou(boxes, others) == pytest.approx(np.array([[1.0, 50 / 150, 0.0]]))
+
+
+def test_match_detections_greedy_by_confidence():
+    gt = np.array([[0, 0, 10, 10], [50, 50, 60, 60]], dtype=float)
+    pred = np.array([[1, 0, 11, 10], [0, 0, 10, 10], [100, 100, 110, 110]], dtype=float)
+    scores = np.array([0.6, 0.9, 0.8])
+    is_tp, found = match_detections(pred, scores, gt)
+    # a mais confiante fica com a anotação; a duplicata vira falso positivo, assim como a caixa
+    # longe de tudo, e o segundo cromossomo não foi detectado
+    assert is_tp.tolist() == [False, True, False]
+    assert found.tolist() == [True, False]
+
+
+def test_match_detections_empty():
+    is_tp, found = match_detections(np.zeros((0, 4)), np.zeros(0), np.array([[0, 0, 1, 1]], dtype=float))
+    assert is_tp.size == 0 and found.tolist() == [False]
+
+
+def test_difficult_images_strips_lines(tmp_path):
+    diff_list = tmp_path / "diff_image.txt"
+    diff_list.write_text("103191\r\n103202\n\n")
+    assert difficult_images(diff_list) == {"103191", "103202"}

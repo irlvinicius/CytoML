@@ -1,6 +1,6 @@
-"""Avaliação do detector no teste, com comparação justa contra o baseline do TCC1.
+"""Avaliação do detector no teste, com comparação contra o baseline do TCC1.
 
-O baseline do TCC1 (`models/yolo/yolo26m/runs/baseline/best.pt`) foi treinado com imagens cruas na
+O baseline do TCC1 (`models/yolo/yolo26m/runs/baseline/best.pt`) foi treinado com imagens originais na
 partição oficial do dataset (`train.txt`). O split de teste atual (15%, `pipeline.py`) foi sorteado do
 pool `train.txt + test.txt`, então ~75% dele estava no treino do baseline -- avaliá-lo ali o
 favoreceria. Por isso a comparação entre os dois usa só `unseen_test_subset()`: as imagens do teste
@@ -12,6 +12,11 @@ AUC-ROC não é uma métrica de detecção: não existe um conjunto fixo de nega
 imagem sem cromossomo seria um), então não há taxa de falsos positivos definida. O equivalente usado
 em detecção é a curva precisão × recall (cuja área é o AP) e a curva F1 × confiança, que mostra o
 limiar de confiança que equilibra precisão e recall.
+
+Para a análise de falhas, `difficult_images()` lê a lista de imagens "difíceis" dos autores do
+dataset (fundo escuro / sobreposição) -- todas estão no `test.txt` oficial, então as que caem no
+teste atual também estão em `unseen_test_subset()` -- e `match_detections` separa, imagem a imagem,
+os acertos, os falsos positivos e os cromossomos não detectados.
 """
 
 import shutil
@@ -34,6 +39,7 @@ from pipeline import (
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DATASET_YAML = REPO_ROOT / "data" / "dataset.yaml"
 EVAL_ROOT = PROCESSED_ROOT.parent / "eval"
+DIFF_LIST = RAW_ROOT.parent / "diff_image.txt"
 SOURCES = ("raw", "processed")
 
 
@@ -42,6 +48,44 @@ def unseen_test_subset() -> list[str]:
     _train, _val, test = split_train_val_test(load_full_pool())
     official_test = set(load_existing_pool(TEST_LIST))
     return sorted(name for name in test if name in official_test)
+
+
+def difficult_images(diff_list: Path = DIFF_LIST) -> set[str]:
+    """Imagens marcadas como difíceis pelos autores do dataset (`diff_image.txt`)."""
+    return {line.strip() for line in diff_list.read_text().splitlines() if line.strip()}
+
+
+def box_iou(boxes_a: np.ndarray, boxes_b: np.ndarray) -> np.ndarray:
+    """Matriz de IoU (N x M) entre caixas `xyxy`."""
+    a, b = boxes_a[:, None, :], boxes_b[None, :, :]
+    inter_w = np.clip(np.minimum(a[..., 2], b[..., 2]) - np.maximum(a[..., 0], b[..., 0]), 0, None)
+    inter_h = np.clip(np.minimum(a[..., 3], b[..., 3]) - np.maximum(a[..., 1], b[..., 1]), 0, None)
+    inter = inter_w * inter_h
+    area_a = (a[..., 2] - a[..., 0]) * (a[..., 3] - a[..., 1])
+    area_b = (b[..., 2] - b[..., 0]) * (b[..., 3] - b[..., 1])
+    return inter / (area_a + area_b - inter)
+
+
+def match_detections(
+    pred_boxes: np.ndarray, scores: np.ndarray, gt_boxes: np.ndarray, iou_threshold: float = 0.5
+) -> tuple[np.ndarray, np.ndarray]:
+    """Casamento guloso por confiança, como no cálculo do AP: cada detecção, da mais confiante para a
+    menos, fica com a anotação ainda livre de maior IoU, se a IoU passar do limiar.
+
+    Devolve (detecção é acerto, anotação foi encontrada): os `False` da primeira são falsos positivos
+    e os da segunda, cromossomos não detectados (falsos negativos).
+    """
+    is_tp = np.zeros(len(pred_boxes), dtype=bool)
+    found = np.zeros(len(gt_boxes), dtype=bool)
+    if len(pred_boxes) == 0 or len(gt_boxes) == 0:
+        return is_tp, found
+    iou = box_iou(pred_boxes, gt_boxes)
+    for i in np.argsort(-scores, kind="stable"):
+        candidates = np.where(found, -1.0, iou[i])
+        j = int(candidates.argmax())
+        if candidates[j] >= iou_threshold:
+            is_tp[i], found[j] = True, True
+    return is_tp, found
 
 
 def build_eval_set(
