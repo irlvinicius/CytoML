@@ -9,7 +9,7 @@ tipo é cada um — informação necessária para contar por classe e detectar a
 
 Código completo e testado (extração de recortes, dataset, treino, avaliação, validação cruzada,
 export ONNX). O modelo usado no pipeline é o `resnet50-paper` (configuração do paper), o único peso
-do classificador versionado no git. Resultados no split de teste (34.434 recortes de 749 metáfases;
+do classificador versionado no git (`best.pt` e `best.onnx`). Resultados no split de teste (34.434 recortes de 749 metáfases;
 IC 95% por bootstrap reamostrando metáfases inteiras, `03_eval.ipynb`):
 
 | | Split único (`resnet50-paper`) | Validação cruzada (5 folds, média ± desvio) |
@@ -127,7 +127,8 @@ uv run python src/classification/evaluate.py --checkpoint models/classifier/runs
 ```
 
 Usa o mesmo resize do treino (lido do checkpoint). Reporta top-1/top-2, macro-F1, matriz de confusão 24×24 e acurácia por grupo de Denver (A–G, X, Y —
-erro dentro do mesmo grupo é o caso mais comum e mais tolerável). Salva `test_probs.npy` e
+erro dentro do mesmo grupo é mais tolerável, mas só ~27% dos erros caem nele: os mais comuns são
+entre grupos vizinhos de tamanho parecido, como F19↔G22 e X↔C8). Salva `test_probs.npy` e
 `test_labels.npy` no mesmo diretório do checkpoint — as probabilidades (não só o argmax) são o que a
 próxima fase (detecção de aneuploidias) usa para atribuir contagens por classe.
 
@@ -138,7 +139,10 @@ uv run python src/classification/export_onnx.py --checkpoint models/classifier/r
 ```
 
 Exporta com batch dinâmico e confere a paridade numérica contra `onnxruntime` antes de considerar o
-export válido.
+export válido. A entrada do ONNX é o tensor já pré-processado (resize 224×224 do checkpoint, 3 canais,
+normalização ImageNet; `dataset.preprocess`) e a saída são os logits das 24 classes, sem softmax. O
+`resnet50-paper/best.onnx` versionado foi gerado assim (diferença máxima de 6e-5 nos logits e a mesma
+classe prevista em 203 recortes do teste).
 
 ### 5. Validação cruzada (k-fold)
 
@@ -158,7 +162,7 @@ de treino (RTX 4070 Ti), ~12h os 5. O detector tem o equivalente em `src/detecti
 
 ### Pesos fora do git
 
-Só o `resnet50-paper/best.pt` está no git. Os 5 folds da validação cruzada estão no Hugging Face
+Só o `resnet50-paper/` (`best.pt` e `best.onnx`) está no git. Os 5 folds da validação cruzada estão no Hugging Face
 (`models/resnet50-paper-cv/`). Os comandos de download estão em "Pesos dos modelos", no README
 principal; para o `07_cross_validation.ipynb` não é preciso baixar os pesos (ver o início do
 notebook).
