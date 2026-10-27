@@ -1,8 +1,9 @@
 """Avalia um checkpoint do classificador no split de teste.
 
 Reporta top-1/top-2, macro-F1, matriz de confusão 24x24 e acurácia por grupo de
-Denver (A-G, X, Y) -- erro dentro do mesmo grupo é o caso mais comum e mais
-tolerável (cromossomos de tamanho parecido). Salva as probabilidades softmax do
+Denver (A-G, X, Y) -- um erro dentro do mesmo grupo é mais tolerável (cromossomos
+de tamanho parecido), embora boa parte dos erros caia entre grupos vizinhos
+(ex.: F19/G22; ver o `03_eval.ipynb`). Salva as probabilidades softmax do
 teste em test_probs.npy, usadas na Fase 5 para atribuir contagens com a restrição
 de "2 por classe" em vez de só o argmax.
 
