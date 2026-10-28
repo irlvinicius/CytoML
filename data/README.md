@@ -27,8 +27,14 @@ O download extrai o conteúdo para `data/raw/`.
 - `raw/` — dados originais do Kaggle (anotações em Pascal VOC XML). Ver
   "Pastas do dataset original" abaixo para a diferença entre
   `24_chromosomes_object` e `single_chromosomes_object`.
-- `processed/` — dados convertidos para o formato YOLO (gerado pelo pipeline
-  de pré-processamento, ver `src/preprocessing/`).
+- `processed/` — gerado pelos scripts, nada versionado:
+  - `24_chromosomes_object/` — imagens (mediana + CLAHE) e labels no formato
+    YOLO, nos splits 70/15/15 (`src/preprocessing/pipeline.py`), e `folds/`,
+    os 5 folds da validação cruzada (`generate_kfold_splits`);
+  - `classification/` — um recorte por cromossomo e o `manifest.csv`
+    (`src/classification/extract_crops.py`);
+  - `eval/` — subconjuntos de teste do `03_eval.ipynb` do detector
+    (`src/detection/evaluate_detector.py`).
 - `dataset.yaml` — configuração do dataset para o Ultralytics. O campo `path`
   é um placeholder: os notebooks de treino sobrescrevem esse valor em tempo de
   execução com o caminho absoluto real desta pasta.
@@ -51,6 +57,9 @@ diferença está só na anotação:
   `24_chromosomes_object` para detecção, e sem valor para a Fase 4).
 
 Dentro de `24_chromosomes_object`, os arquivos `train.txt`/`test.txt` marcam a
-partição oficial definida pelos autores do dataset (não usada diretamente
-pelo pipeline) e `diff_image.txt` marca imagens consideradas
-"difíceis" pelos autores (fundo escuro / sobreposição de cromossomos).
+partição oficial definida pelos autores do dataset e `diff_image.txt` marca
+imagens consideradas "difíceis" pelos autores (fundo escuro / sobreposição de
+cromossomos). O pipeline não usa a partição oficial como split: junta as duas
+listas num pool e sorteia o 70/15/15. O `test.txt` só volta a ser usado na
+avaliação do detector, para comparar com o baseline do TCC1 (treinado no
+`train.txt`) apenas em imagens que ele não viu.
