@@ -229,3 +229,9 @@ models/yolo/yolo26m/runs/yolo26m-preprocessed/
 
 # Outputs (gráficos) do model.val do 03_eval.ipynb do detector
 models/yolo/yolo26m/runs/eval/
+
+# Avaliação do cariótipo (cache de probabilidades e tabelas)
+outputs/karyotype/
+
+# Modelos quantizados gerados por src/inference/quantize.py (experimento, não usados)
+*.int8.onnx
